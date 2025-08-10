@@ -1,4 +1,5 @@
-﻿using DesignProjectStructure.Configuration;
+﻿using DesignProjectStructure.Cli;
+using DesignProjectStructure.Configuration;
 using DesignProjectStructure.Helpers;
 using DesignProjectStructure.Models;
 using System.Text;
@@ -6,28 +7,10 @@ using System.Text;
 Console.WriteLine("Design Project Structure");
 Console.WriteLine("Loading configuration...");
 
-// Carrega a configuração
+// Load configurations
 var config = ConfigurationManager.Instance.Config;
-
-Console.WriteLine($"Configuration loaded! Animation: {(config.General.ShowConsoleAnimation ? "ON" : "OFF")}");
-Console.WriteLine("Press any key to continue...");
-Console.ReadKey();
-
-// Configurações com valores padrão da configuração
+// Default root path configuration file
 string rootPath = Directory.GetCurrentDirectory();
-
-// Constrói o caminho de saída de forma mais robusta
-string outputFile;
-if (Path.IsPathRooted(config.General.DefaultOutputPath))
-{
-    // Se o caminho na configuração for absoluto, usa ele
-    outputFile = config.General.DefaultOutputPath;
-}
-else
-{
-    // Se for relativo, combina com o diretório do projeto (não o de execução)
-    outputFile = Path.Combine(rootPath, config.General.DefaultOutputPath);
-}
 
 // Global variables for control
 StructureItens structureItens = new StructureItens
@@ -43,46 +26,47 @@ StructureItens structureItens = new StructureItens
     TotalItems = 0
 };
 
+// Build output path
+string outputFile;
+if (Path.IsPathRooted(config.General.DefaultOutputPath))
+{
+    // Se o caminho na configuração for absoluto, usa ele
+    outputFile = config.General.DefaultOutputPath;
+}
+else
+{
+    // Se for relativo, combina com o diretório do projeto (não o de execução)
+    outputFile = Path.Combine(rootPath, config.General.DefaultOutputPath);
+}
+
+CliArguments cli = new CliArguments();
+// Allows the user to specify a different path
+rootPath = cli.UseCliArgumentsForRootPath(args, rootPath, structureItens);
+
+// Allows the user to specify a different output file
+outputFile = cli.UseCliArgumentsForOutputFile(args, outputFile);
+
+bool isHelpCalled = cli.UseCliArgumentsForConfiguration(args, config);
+
+if (isHelpCalled)
+{
+    Console.WriteLine("Press any key....");
+    Console.ReadKey();
+    return;
+}
+
+Console.WriteLine($"Configuration loaded! Animation: {(config.General.ShowConsoleAnimation ? "ON" : "OFF")}");
+Console.WriteLine("Press any key to continue...");
+Console.ReadKey();
+
 AnimatorStructureGenerator animator = new AnimatorStructureGenerator(structureItens);
-
-// Permite ao usuário especificar um caminho diferente
-if (args.Length > 0)
-{
-    rootPath = args[0];
-    structureItens.Path = rootPath;
-}
-
-// Permite ao usuário especificar arquivo de saída diferente
-if (args.Length > 1)
-{
-    outputFile = args[1];
-}
-
-// Verifica argumentos de configuração
-for (int i = 0; i < args.Length; i++)
-{
-    if (args[i] == "--no-animation")
-    {
-        config.General.ShowConsoleAnimation = false;
-    }
-    else if (args[i] == "--config" && i + 1 < args.Length)
-    {
-        // Carrega configuração customizada (implementar se necessário)
-        Console.WriteLine($"Custom config not implemented yet: {args[i + 1]}");
-    }
-    else if (args[i] == "--help" || args[i] == "-h")
-    {
-        ShowHelp();
-        return;
-    }
-}
 
 Console.CursorVisible = false;
 Console.Clear();
 
 try
 {
-    // Contagem total de itens primeiro
+    // Total item count first
     Console.WriteLine("Counting files and folders...");
     structureItens.TotalItems = StructureGenerator.CounterItens(rootPath);
 
@@ -91,11 +75,11 @@ try
         Console.Clear();
     }
 
-    // Desenha a interface inicial
+    // Design the initial interface
     ConsoleRenderer.DesignInterface();
     ConsoleRenderer.RenderHeader(rootPath, outputFile);
 
-    // Prepara a estrutura
+    // Prepare structure
     structureItens.CompleteStructure.AppendLine($"Project Structure: {Path.GetFileName(rootPath)}");
     structureItens.CompleteStructure.AppendLine($"Path: {rootPath}");
 
@@ -107,10 +91,10 @@ try
     structureItens.CompleteStructure.AppendLine(new string('=', 60));
     structureItens.CompleteStructure.AppendLine();
 
-    // Gera a estrutura (com ou sem animação baseado na configuração)
+    // Generates structure (with or without animation based on the configuration)
     animator.GenerateStructureAnimated();
 
-    // Se animação estiver desabilitada, atualiza status final
+    // If animation is disabled, update final status
     if (!config.General.ShowConsoleAnimation)
     {
         StructureGenerator.UpdateFinalStatus(
@@ -135,7 +119,7 @@ try
         SaveInFormat(format, outputFile, structureItens, rootPath);
     }
 
-    // Mensagem final
+    // Final message
     ConsoleRenderer.FinalMessage(outputFile);
 }
 catch (Exception ex)
@@ -152,38 +136,6 @@ Console.SetCursorPosition(0, Console.WindowHeight - 1);
 Console.CursorVisible = true;
 Console.Write("Press any key to exit...");
 Console.ReadKey();
-
-static void ShowHelp()
-{
-    Console.WriteLine(@"
-Design Project Structure - Gera visualização da estrutura de projetos
-
-USAGE:
-    DesignProjectStructure [path] [output] [options]
-
-ARGUMENTS:
-    path        Caminho do projeto (padrão: diretório atual)
-    output      Arquivo de saída (padrão: configuração)
-
-OPTIONS:
-    --no-animation    Desabilita animação do console
-    --config <file>   Usa arquivo de configuração customizado
-    -h, --help        Mostra esta ajuda
-
-EXAMPLES:
-    DesignProjectStructure
-    DesignProjectStructure C:\MeuProjeto
-    DesignProjectStructure C:\MeuProjeto docs\estrutura.md
-    DesignProjectStructure --no-animation
-
-CONFIGURATION:
-    O arquivo config.json permite personalizar:
-    - Filtros de arquivos e pastas
-    - Formatos de saída
-    - Ícones e visualização
-    - Configurações de análise
-");
-}
 
 static void SaveInFormat(string format, string basePath, StructureItens structureItens, string rootPath)
 {
@@ -225,13 +177,13 @@ static void SaveInFormat(string format, string basePath, StructureItens structur
                 break;
 
             default:
-                Console.WriteLine($"⚠ Formato não suportado: {format}");
+                Console.WriteLine($"⚠ Unsupported format: {format}");
                 break;
         }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"✗ Erro ao salvar formato {format}: {ex.Message}");
+        Console.WriteLine($"✗ Error saving format {format}: {ex.Message}");
     }
 }
 
@@ -440,3 +392,4 @@ static string GenerateHtmlOutput(StructureItens structureItens, string rootPath)
 
     return html;
 }
+
