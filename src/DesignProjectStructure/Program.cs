@@ -187,29 +187,6 @@ static void SaveInFormat(string format, string basePath, StructureItens structur
     }
 }
 
-static string GenerateJsonOutput(StructureItens structureItens, string rootPath)
-{
-    // Implementação básica - pode ser expandida
-    var output = new
-    {
-        projectName = Path.GetFileName(rootPath),
-        path = rootPath,
-        generatedAt = DateTime.Now,
-        statistics = new
-        {
-            totalFolders = structureItens.FolderCounter,
-            totalFiles = structureItens.FileCounter,
-            totalItems = structureItens.ProcessedItems
-        },
-        structure = structureItens.VisualStructure
-    };
-
-    return System.Text.Json.JsonSerializer.Serialize(output, new System.Text.Json.JsonSerializerOptions
-    {
-        WriteIndented = true
-    });
-}
-
 static string GenerateHtmlOutput(StructureItens structureItens, string rootPath)
 {
     // Converte a estrutura completa (que tem ícones Unicode) para HTML
@@ -393,3 +370,201 @@ static string GenerateHtmlOutput(StructureItens structureItens, string rootPath)
     return html;
 }
 
+static string GenerateJsonOutput(StructureItens structureItens, string rootPath)
+{
+    var config = ConfigurationManager.Instance.Config;
+
+    // Option 1: Full hierarchical structure (recommended)
+    //var rootStructure = GenerateJsonStructureHierarchical(rootPath);
+
+    // Option 2: Simple, clean list (uncomment if you prefer)
+    var rootStructure = GenerateJsonStructureFlat(rootPath);
+
+    var output = new
+    {
+        projectName = Path.GetFileName(rootPath),
+        path = rootPath,
+        generatedAt = DateTime.Now,
+        statistics = new
+        {
+            totalFolders = structureItens.FolderCounter,
+            totalFiles = structureItens.FileCounter,
+            totalItems = structureItens.ProcessedItems
+        },
+        structure = rootStructure
+    };
+
+    return System.Text.Json.JsonSerializer.Serialize(output, new System.Text.Json.JsonSerializerOptions
+    {
+        WriteIndented = true
+    });
+}
+
+static List<object> GenerateJsonStructureFlat(string rootPath)
+{
+    var items = new List<object>();
+    GenerateJsonStructureFlatRecursive(rootPath, "", items);
+    return items;
+}
+
+static void GenerateJsonStructureFlatRecursive(string path, string relativePath, List<object> items)
+{
+    try
+    {
+        var name = Path.GetFileName(path);
+        if (string.IsNullOrEmpty(name))
+            name = path;
+
+        var isDirectory = Directory.Exists(path);
+        var currentRelativePath = string.IsNullOrEmpty(relativePath)
+            ? name
+            : $"{relativePath}/{name}";
+
+        var item = new Dictionary<string, object>
+        {
+            ["name"] = name,
+            ["type"] = isDirectory ? "directory" : "file",
+            ["relativePath"] = currentRelativePath
+        };
+
+        // Adiciona extensão para arquivos
+        if (!isDirectory)
+        {
+            var extension = Path.GetExtension(path);
+            if (!string.IsNullOrEmpty(extension))
+            {
+                item["extension"] = extension.ToLower();
+            }
+        }
+
+        items.Add(item);
+
+        // Se for diretório, processa filhos
+        if (isDirectory)
+        {
+            try
+            {
+                var childItems = Directory.GetFileSystemEntries(path);
+                Array.Sort(childItems, (x, y) =>
+                {
+                    bool xIsDir = Directory.Exists(x);
+                    bool yIsDir = Directory.Exists(y);
+
+                    if (xIsDir && !yIsDir) return -1;
+                    if (!xIsDir && yIsDir) return 1;
+
+                    return Path.GetFileName(x).CompareTo(Path.GetFileName(y));
+                });
+
+                foreach (var childPath in childItems)
+                {
+                    if (!IgnoreFilter.MustIgnore(Path.GetFileName(childPath)))
+                    {
+                        GenerateJsonStructureFlatRecursive(childPath, currentRelativePath, items);
+                    }
+                }
+            }
+            catch { /* Ignora erros de acesso */ }
+        }
+    }
+    catch { /* Ignora erros */ }
+}
+
+static object GenerateJsonStructureHierarchical(string path)
+{
+    try
+    {
+        var name = Path.GetFileName(path);
+        if (string.IsNullOrEmpty(name))
+            name = path;
+
+        var isDirectory = Directory.Exists(path);
+
+        var item = new Dictionary<string, object>
+        {
+            ["name"] = name,
+            ["type"] = isDirectory ? "directory" : "file",
+            ["path"] = path
+        };
+
+        // Adiciona extensão para arquivos
+        if (!isDirectory)
+        {
+            var extension = Path.GetExtension(path);
+            if (!string.IsNullOrEmpty(extension))
+            {
+                item["extension"] = extension.ToLower();
+            }
+
+            // Adiciona tamanho do arquivo se configurado
+            var config = ConfigurationManager.Instance.Config;
+            if (config.Statistics.CalculateFileSize)
+            {
+                try
+                {
+                    var fileInfo = new FileInfo(path);
+                    item["size"] = fileInfo.Length;
+                }
+                catch { }
+            }
+        }
+
+        // Se for diretório, processa filhos
+        if (isDirectory)
+        {
+            var children = new List<object>();
+
+            try
+            {
+                var items = Directory.GetFileSystemEntries(path);
+                Array.Sort(items, (x, y) =>
+                {
+                    bool xIsDir = Directory.Exists(x);
+                    bool yIsDir = Directory.Exists(y);
+
+                    // Diretórios primeiro
+                    if (xIsDir && !yIsDir) return -1;
+                    if (!xIsDir && yIsDir) return 1;
+
+                    // Depois por nome
+                    return Path.GetFileName(x).CompareTo(Path.GetFileName(y));
+                });
+
+                foreach (var childPath in items)
+                {
+                    if (!IgnoreFilter.MustIgnore(Path.GetFileName(childPath)))
+                    {
+                        children.Add(GenerateJsonStructureHierarchical(childPath));
+                    }
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Adiciona indicador de acesso negado
+                item["accessDenied"] = true;
+            }
+            catch (Exception ex)
+            {
+                // Adiciona indicador de erro
+                item["error"] = ex.Message;
+            }
+
+            if (children.Count > 0)
+            {
+                item["children"] = children;
+            }
+        }
+
+        return item;
+    }
+    catch (Exception ex)
+    {
+        return new Dictionary<string, object>
+        {
+            ["name"] = Path.GetFileName(path),
+            ["type"] = "error",
+            ["error"] = ex.Message,
+            ["path"] = path
+        };
+    }
+}
