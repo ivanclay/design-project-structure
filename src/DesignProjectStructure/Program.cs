@@ -127,8 +127,8 @@ try
     ConsoleRenderer.UpdateProgressBar(100);
 
     // Salva nos formatos especificados na configuração
-    Console.WriteLine($"\nSaving files to: {outputFile}");
-    Console.WriteLine($"Formats: {string.Join(", ", config.Output.Formats)}");
+    //Console.WriteLine($"\nSaving files to: {outputFile}");
+    //Console.WriteLine($"Formats: {string.Join(", ", config.Output.Formats)}");
 
     foreach (var format in config.Output.Formats)
     {
@@ -207,21 +207,21 @@ static void SaveInFormat(string format, string basePath, StructureItens structur
             case "md":
                 outputFile = Path.Combine(directory, $"{filename}.md");
                 FileWriter.SaveToFile(outputFile, structureItens.CompleteStructure.ToString());
-                Console.WriteLine($"✓ Markdown saved: {outputFile}");
+                //Console.WriteLine($"✓ Markdown saved: {outputFile}");
                 break;
 
             case "json":
                 outputFile = Path.Combine(directory, $"{filename}.json");
                 var jsonContent = GenerateJsonOutput(structureItens, rootPath);
                 File.WriteAllText(outputFile, jsonContent);
-                Console.WriteLine($"✓ JSON saved: {outputFile}");
+                //Console.WriteLine($"✓ JSON saved: {outputFile}");
                 break;
 
             case "html":
                 outputFile = Path.Combine(directory, $"{filename}.html");
                 var htmlContent = GenerateHtmlOutput(structureItens, rootPath);
                 File.WriteAllText(outputFile, htmlContent);
-                Console.WriteLine($"✓ HTML saved: {outputFile}");
+                //Console.WriteLine($"✓ HTML saved: {outputFile}");
                 break;
 
             default:
