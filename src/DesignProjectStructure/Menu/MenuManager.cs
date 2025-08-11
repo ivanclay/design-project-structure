@@ -76,7 +76,6 @@ public class MenuManager
             description: "Configure application settings",
             icon: "⚙️",
             isEnabled: true,
-            isSpecial: true,
             action: ShowSettings
         ));
 
@@ -86,7 +85,6 @@ public class MenuManager
             description: "Show help and documentation",
             icon: "❓",
             isEnabled: true,
-            isSpecial: true,
             action: ShowHelp
         ));
 
@@ -96,7 +94,6 @@ public class MenuManager
             description: "About Design Project Structure",
             icon: "ℹ️",
             isEnabled: true,
-            isSpecial: true,
             action: ShowAbout
         ));
 
@@ -106,7 +103,6 @@ public class MenuManager
             description: "Exit the application",
             icon: "🚪",
             isEnabled: true,
-            isSpecial: true,
             action: ExitApplication
         ));
     }
