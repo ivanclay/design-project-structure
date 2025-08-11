@@ -1,13 +1,15 @@
-﻿using DesignProjectStructure.Models;
+﻿using DesignProjectStructure.Menu;
+using DesignProjectStructure.Models;
 
-namespace DesignProjectStructure.Menu;
+namespace DesignProjectStructure.Helpers;
 
 /// <summary>
 /// Gerenciador do menu principal da aplicação
 /// </summary>
 public class MenuManager
 {
-    private readonly InteractiveMenu _menu;
+    //private readonly InteractiveMenu _menu;
+    private InteractiveMenu _menu;
     private bool _shouldExit;
 
     public MenuManager()
@@ -136,18 +138,27 @@ public class MenuManager
         {
             _menu.Stop();
 
-            // Aqui vamos chamar a lógica atual do Program.cs
-            // Por enquanto, vamos simular e depois integrar
-            ShowMessage("🚀 Executing Project Structure Generation...\n\n" +
-                       "This will launch the current structure generation process.\n\n" +
-                       "Press any key to start...", ConsoleColor.Green);
+            // Chama a função de geração de estrutura do Program.cs
+            Program.ExecuteStructureGeneration();
 
-            // Aqui será integrado com a lógica atual do Program.cs
-            ExecuteCurrentProgramLogic();
+            // Após a execução, retorna ao menu se não deve sair
+            if (_menu.IsRunning && !_shouldExit)
+            {
+                // Reinicia o menu
+                _menu = new InteractiveMenu();
+                SetupMenuOptions();
+            }
         }
         catch (Exception ex)
         {
             ShowError($"Error executing structure generation: {ex.Message}");
+
+            // Reinicia o menu em caso de erro
+            if (!_shouldExit)
+            {
+                _menu = new InteractiveMenu();
+                SetupMenuOptions();
+            }
         }
     }
 
@@ -241,19 +252,6 @@ public class MenuManager
     #endregion
 
     #region Métodos Auxiliares
-
-    /// <summary>
-    /// Placeholder para integrar com a lógica atual do Program.cs
-    /// </summary>
-    private void ExecuteCurrentProgramLogic()
-    {
-        // Aqui será chamada a lógica atual do Program.cs
-        // Por enquanto, só retorna ao menu
-        ShowMessage("✅ Structure generation completed!\n\n" +
-                   "The current Program.cs logic would be executed here.\n" +
-                   "This will be integrated in the next step.\n\n" +
-                   "Press any key to return to menu...", ConsoleColor.Green);
-    }
 
     /// <summary>
     /// Mostra uma mensagem genérica
