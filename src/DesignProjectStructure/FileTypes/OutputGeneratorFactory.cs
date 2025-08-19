@@ -1,7 +1,7 @@
 ﻿namespace DesignProjectStructure.FileTypes;
 
 /// <summary>
-/// Factoryto create output generators based on format
+/// Factory to create output generators based on format
 /// </summary>
 public static class OutputGeneratorFactory
 {
@@ -11,13 +11,16 @@ public static class OutputGeneratorFactory
         { "markdown", () => new OutputMarkdownGenerator() },
         { "md", () => new OutputMarkdownGenerator() },
         { "html", () => new OutputHtmlGenerator() },
-        { "htm", () => new OutputHtmlGenerator() }
+        { "htm", () => new OutputHtmlGenerator() },
+        { "consolidated", () => new OutputConsolidatedGenerator() },
+        { "single", () => new OutputConsolidatedGenerator() },
+        { "all-in-one", () => new OutputConsolidatedGenerator() }
     };
 
     /// <summary>
     /// Creates an output generator based on the specified format
     /// </summary>
-    /// <param name="format">Desired format (json, markdown, html, etc.)</param>
+    /// <param name="format">Desired format (json, markdown, html, consolidated, etc.)</param>
     /// <returns>Instance of the appropriate generator</returns>
     /// <exception cref="NotSupportedException">When the format is not supported</exception>
     public static IOutputGenerator Create(string format)

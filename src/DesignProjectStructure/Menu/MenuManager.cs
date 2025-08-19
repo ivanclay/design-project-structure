@@ -8,7 +8,6 @@ namespace DesignProjectStructure.Helpers;
 /// </summary>
 public class MenuManager
 {
-    //private readonly InteractiveMenu _menu;
     private InteractiveMenu _menu;
     private bool _shouldExit;
 
@@ -32,6 +31,15 @@ public class MenuManager
             icon: "📁",
             isEnabled: true,
             action: ExecuteStructureGeneration
+        ));
+
+        _menu.AddOption(new MenuOption(
+            id: "generate-consolidated",
+            title: "Generate Consolidated Code File",
+            description: "Create single file with all code for AI analysis",
+            icon: "📑",
+            isEnabled: true,
+            action: ExecuteConsolidatedGeneration
         ));
 
         // Funcionalidades futuras (desabilitadas por enquanto)
@@ -163,6 +171,61 @@ public class MenuManager
     }
 
     /// <summary>
+    /// Executa a geração do arquivo consolidado
+    /// </summary>
+    private void ExecuteConsolidatedGeneration()
+    {
+        try
+        {
+            _menu.Stop();
+
+            // Salva a configuração atual
+            var config = Configuration.ConfigurationManager.Instance.Config;
+            var originalFormats = new List<string>(config.Output.Formats);
+
+            // Define temporariamente apenas o formato consolidado
+            config.Output.Formats.Clear();
+            config.Output.Formats.Add("consolidated");
+
+            // Define um nome específico para o arquivo consolidado
+            var originalOutputPath = config.General.DefaultOutputPath;
+            config.General.DefaultOutputPath = "project-consolidated-for-ai.md";
+
+            try
+            {
+                // Chama a função de geração
+                Program.ExecuteStructureGeneration();
+            }
+            finally
+            {
+                // Restaura a configuração original
+                config.Output.Formats.Clear();
+                config.Output.Formats.AddRange(originalFormats);
+                config.General.DefaultOutputPath = originalOutputPath;
+            }
+
+            // Após a execução, retorna ao menu se não deve sair
+            if (_menu.IsRunning && !_shouldExit)
+            {
+                // Reinicia o menu
+                _menu = new InteractiveMenu();
+                SetupMenuOptions();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowError($"Error executing consolidated generation: {ex.Message}");
+
+            // Reinicia o menu em caso de erro
+            if (!_shouldExit)
+            {
+                _menu = new InteractiveMenu();
+                SetupMenuOptions();
+            }
+        }
+    }
+
+    /// <summary>
     /// Placeholder para funcionalidades futuras
     /// </summary>
     private void ShowComingSoon(string featureName)
@@ -189,6 +252,8 @@ public class MenuManager
                    $"📊 Include Statistics: {config.Output.IncludeStats}\n" +
                    $"🕒 Include Timestamp: {config.Output.IncludeTimestamp}\n\n" +
                    "To modify settings, edit 'appsettings.json' file.\n\n" +
+                   "NEW: 📑 Consolidated format creates a single file\n" +
+                   "with all code for easy AI assistant upload!\n\n" +
                    "Press any key to return to menu...", ConsoleColor.Cyan);
     }
 
