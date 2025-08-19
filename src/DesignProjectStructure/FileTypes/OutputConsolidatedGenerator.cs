@@ -20,29 +20,58 @@ public class OutputConsolidatedGenerator : IOutputGenerator
         ".vue", ".jsx", ".tsx", ".svelte", ".razor", ".cshtml", ".vbhtml"
     };
 
+    private readonly HashSet<string> _ignoredFolders = new()
+    {
+        "bin", "obj", "node_modules", ".git", ".vs", ".vscode", "packages",
+        "Debug", "Release", "dist", "build", "target", ".idea"
+    };
+
     public string Generate(StructureItens structureItens, string rootPath)
     {
+        // Validação inicial
+        if (string.IsNullOrWhiteSpace(rootPath))
+        {
+            throw new ArgumentException("O caminho raiz não pode estar vazio", nameof(rootPath));
+        }
+
         var config = ConfigurationManager.Instance.Config;
         var consolidatedContent = new StringBuilder();
 
-        // Cabeçalho do documento
-        GenerateHeader(consolidatedContent, structureItens, rootPath);
+        try
+        {
+            // Cabeçalho do documento
+            GenerateHeader(consolidatedContent, structureItens, rootPath);
 
-        // Índice de arquivos
-        var codeFiles = GetCodeFiles(rootPath);
-        GenerateIndex(consolidatedContent, codeFiles, rootPath);
+            // Índice de arquivos
+            var codeFiles = GetCodeFiles(rootPath);
+            GenerateIndex(consolidatedContent, codeFiles, rootPath);
 
-        // Separador
-        consolidatedContent.AppendLine();
-        consolidatedContent.AppendLine(new string('=', 80));
-        consolidatedContent.AppendLine("# ARQUIVOS DO PROJETO");
-        consolidatedContent.AppendLine(new string('=', 80));
-        consolidatedContent.AppendLine();
+            // Separador
+            consolidatedContent.AppendLine();
+            consolidatedContent.AppendLine(new string('=', 80));
+            consolidatedContent.AppendLine("# ARQUIVOS DO PROJETO");
+            consolidatedContent.AppendLine(new string('=', 80));
+            consolidatedContent.AppendLine();
 
-        // Conteúdo dos arquivos
-        GenerateFileContents(consolidatedContent, codeFiles, rootPath);
+            // Conteúdo dos arquivos
+            GenerateFileContents(consolidatedContent, codeFiles, rootPath);
 
-        return consolidatedContent.ToString();
+            return consolidatedContent.ToString();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro durante a geração: {ex.Message}");
+
+            // Retorna um documento de erro em vez de falhar completamente
+            consolidatedContent.Clear();
+            consolidatedContent.AppendLine("# ERRO NA GERAÇÃO DO DOCUMENTO CONSOLIDADO");
+            consolidatedContent.AppendLine();
+            consolidatedContent.AppendLine($"**Erro:** {ex.Message}");
+            consolidatedContent.AppendLine($"**Caminho:** {rootPath}");
+            consolidatedContent.AppendLine($"**Data:** {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
+
+            return consolidatedContent.ToString();
+        }
     }
 
     public string GetFileExtension() => "md";
@@ -93,39 +122,103 @@ public class OutputConsolidatedGenerator : IOutputGenerator
     {
         var codeFiles = new List<FileInfo>();
 
+        // Validação inicial
+        if (string.IsNullOrWhiteSpace(rootPath))
+        {
+            Console.WriteLine("Erro: Caminho raiz está vazio ou nulo");
+            return codeFiles;
+        }
+
         try
         {
-            var allFiles = Directory.GetFiles(rootPath, "*", SearchOption.AllDirectories);
+            // Normaliza o caminho raiz
+            var normalizedRootPath = Path.GetFullPath(rootPath);
+
+            if (!Directory.Exists(normalizedRootPath))
+            {
+                Console.WriteLine($"Erro: Diretório não existe: {normalizedRootPath}");
+                return codeFiles;
+            }
+
+            var allFiles = Directory.GetFiles(normalizedRootPath, "*", SearchOption.AllDirectories);
 
             foreach (var filePath in allFiles)
             {
-                var fileName = Path.GetFileName(filePath);
-                var extension = Path.GetExtension(filePath).ToLower();
+                try
+                {
+                    // Validação do caminho do arquivo
+                    if (string.IsNullOrWhiteSpace(filePath))
+                        continue;
 
-                // Ignora arquivos conforme configuração
-                if (IgnoreFilter.MustIgnore(fileName))
+                    var fileName = Path.GetFileName(filePath);
+                    if (string.IsNullOrWhiteSpace(fileName))
+                        continue;
+
+                    var extension = Path.GetExtension(filePath)?.ToLower() ?? "";
+                    var relativePath = GetRelativePath(filePath, normalizedRootPath);
+
+                    // Ignora arquivos conforme configuração
+                    if (IgnoreFilter.MustIgnore(fileName))
+                        continue;
+
+                    // Ignora arquivos que estão em pastas ignoradas
+                    if (IsInIgnoredFolder(relativePath))
+                        continue;
+
+                    // Apenas arquivos de código suportados
+                    if (!_supportedExtensions.Contains(extension))
+                        continue;
+
+                    // Ignora arquivos muito grandes (> 1MB)
+                    var fileInfo = new FileInfo(filePath);
+                    if (fileInfo.Length > 1024 * 1024)
+                        continue;
+
+                    codeFiles.Add(fileInfo);
+                }
+                catch (Exception fileEx)
+                {
+                    Console.WriteLine($"Erro ao processar arquivo {filePath}: {fileEx.Message}");
                     continue;
-
-                // Apenas arquivos de código suportados
-                if (!_supportedExtensions.Contains(extension))
-                    continue;
-
-                // Ignora arquivos muito grandes (> 1MB)
-                var fileInfo = new FileInfo(filePath);
-                if (fileInfo.Length > 1024 * 1024)
-                    continue;
-
-                codeFiles.Add(fileInfo);
+                }
             }
         }
         catch (Exception ex)
         {
             // Log do erro mas continua processamento
-            Console.WriteLine($"Erro ao obter arquivos: {ex.Message}");
+            Console.WriteLine($"Erro ao obter arquivos de {rootPath}: {ex.Message}");
         }
 
-        // Ordena por caminho relativo
-        return codeFiles.OrderBy(f => GetRelativePath(f.FullName, rootPath)).ToList();
+        try
+        {
+            // Ordena por caminho relativo
+            var normalizedRootPath = Path.GetFullPath(rootPath);
+            return codeFiles.OrderBy(f => GetRelativePath(f.FullName, normalizedRootPath)).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao ordenar arquivos: {ex.Message}");
+            return codeFiles;
+        }
+    }
+
+    private bool IsInIgnoredFolder(string relativePath)
+    {
+        if (string.IsNullOrEmpty(relativePath))
+            return false;
+
+        // Normaliza o caminho para usar apenas barras normais
+        var normalizedPath = relativePath.Replace('\\', '/');
+        var pathParts = normalizedPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+        // Verifica se qualquer parte do caminho está na lista de pastas ignoradas
+        foreach (var part in pathParts)
+        {
+            if (_ignoredFolders.Contains(part, StringComparer.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 
     private void GenerateIndex(StringBuilder content, List<FileInfo> codeFiles, string rootPath)
@@ -208,13 +301,45 @@ public class OutputConsolidatedGenerator : IOutputGenerator
 
     private string GetRelativePath(string fullPath, string rootPath)
     {
+        // Validações básicas
+        if (string.IsNullOrWhiteSpace(fullPath))
+            return "unknown_file";
+
+        if (string.IsNullOrWhiteSpace(rootPath))
+            return Path.GetFileName(fullPath) ?? "unknown_file";
+
         try
         {
-            return Path.GetRelativePath(rootPath, fullPath).Replace('\\', '/');
+            // Normaliza os caminhos para evitar problemas com barras
+            var normalizedFullPath = Path.GetFullPath(fullPath);
+            var normalizedRootPath = Path.GetFullPath(rootPath);
+
+            // Verifica se o arquivo está dentro do diretório raiz
+            if (!normalizedFullPath.StartsWith(normalizedRootPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return Path.GetFileName(fullPath) ?? "unknown_file";
+            }
+
+            var relativePath = Path.GetRelativePath(normalizedRootPath, normalizedFullPath);
+            return string.IsNullOrWhiteSpace(relativePath) ? Path.GetFileName(fullPath) ?? "unknown_file" : relativePath.Replace('\\', '/');
         }
-        catch
+        catch (Exception ex)
         {
-            return Path.GetFileName(fullPath);
+            Console.WriteLine($"Erro ao calcular caminho relativo para {fullPath}: {ex.Message}");
+            // Fallback mais robusto
+            try
+            {
+                if (fullPath.Length > rootPath.Length)
+                {
+                    var result = fullPath.Substring(rootPath.Length).TrimStart('\\', '/').Replace('\\', '/');
+                    return string.IsNullOrWhiteSpace(result) ? Path.GetFileName(fullPath) ?? "unknown_file" : result;
+                }
+                return Path.GetFileName(fullPath) ?? "unknown_file";
+            }
+            catch
+            {
+                return Path.GetFileName(fullPath) ?? "unknown_file";
+            }
         }
     }
 
