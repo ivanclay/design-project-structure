@@ -27,35 +27,35 @@
 
 ```
 ╔═══════════════════════════════════════════════════════════════════════════════╗
-║ ╣ PROJECT INFORMATION ╠                                                      ║
-║ [.NET] MyProject - ASP.NET Web API                                           ║
-║ Tech: C# | Framework: .NET                                                   ║
-║ Desc: ASP.NET Core Web Application                                           ║
-║ Path: D:\Projects\MyProject                                                  ║
-║ Output: structure.txt | 08/09/2025 15:30:45                                 ║
+║ ╣ PROJECT INFORMATION ╠                                                       ║
+║ [.NET] MyProject - ASP.NET Web API                                            ║
+║ Tech: C# | Framework: .NET                                                    ║
+║ Desc: ASP.NET Core Web Application                                            ║
+║ Path: D:\Projects\MyProject                                                   ║
+║ Output: structure.txt | 08/09/2025 15:30:45                                   ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 
 ╔═══════════════════════════════════════════════════════════════════════════════╗
-║ ╣ FILE STRUCTURE ╠                                                           ║
-║ [DIR] MyProject                                                              ║
-║ ├── [CTRL] Controllers                                                       ║
-║ │   ├── [C#] WeatherController.cs                                            ║
-║ │   └── [C#] HomeController.cs                                               ║
-║ ├── [MODEL] Models                                                           ║
-║ │   └── [C#] WeatherForecast.cs                                              ║
-║ ├── [PROJ] MyProject.csproj                                                  ║
-║ └── [C#] Program.cs                                                          ║
+║ ╣ FILE STRUCTURE ╠                                                            ║
+║ [DIR] MyProject                                                               ║
+║ ├── [CTRL] Controllers                                                        ║
+║ │   ├── [C#] WeatherController.cs                                             ║
+║ │   └── [C#] HomeController.cs                                                ║
+║ ├── [MODEL] Models                                                            ║
+║ │   └── [C#] WeatherForecast.cs                                               ║
+║ ├── [PROJ] MyProject.csproj                                                   ║
+║ └── [C#] Program.cs                                                           ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 
 ╔═══════════════════════════════════════════════════════════════════════════════╗
-║ ╣ PROCESSING DATA ╠                                                          ║
-║ [DIR] FOLDERS FOUND: 012                                                     ║
-║ [FILE] FILES FOUND: 025                                                      ║
-║ [OK] PROCESSED: 037 of 037                                                   ║
-║                                                                              ║
+║ ╣ PROCESSING DATA ╠                                                           ║
+║ [DIR] FOLDERS FOUND: 012                                                      ║
+║ [FILE] FILES FOUND: 025                                                       ║
+║ [OK] PROCESSED: 037 of 037                                                    ║
+║                                                                               ║
 ║ Progress: [100%] ████████████████████████████████████████████████████████████ ║
-║                                                                              ║
-║ COMPLETED! File saved: project_structure.txt                                ║
+║                                                                               ║
+║ COMPLETED! File saved: project_structure.txt                                  ║
 ╚═══════════════════════════════════════════════════════════════════════════════╝
 ```
 
